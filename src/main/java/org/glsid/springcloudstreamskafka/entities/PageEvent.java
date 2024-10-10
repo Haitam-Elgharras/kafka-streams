@@ -1,13 +1,10 @@
 package org.glsid.springcloudstreamskafka.entities;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
 import java.util.Date;
 
-@Data @AllArgsConstructor @NoArgsConstructor @ToString
+@Data @AllArgsConstructor @NoArgsConstructor @ToString @Builder
 public class PageEvent {
     private String page;
     private String user;
