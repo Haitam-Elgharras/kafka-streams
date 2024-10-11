@@ -4,6 +4,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Grouped;
 import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.TimeWindows;
 import org.glsid.springcloudstreamskafka.entities.PageEvent;
 import org.springframework.context.annotation.Bean;
@@ -58,7 +59,7 @@ public class PageEventService {
                 .map((k, v) -> new KeyValue<>(v.getPage(), 0L)) // Map to page as key and 0L as value
                 .groupBy((k, v) -> k, Grouped.with(Serdes.String(), Serdes.Long())) // Group by page
                 .windowedBy(TimeWindows.of(Duration.ofSeconds(5000))) // Windowing by 5000 seconds
-                .count() // returns a KTable<Windowed<String>, Long> where the value is the count of occurrences
+                .count(Materialized.as("count-store")) // returns a KTable<Windowed<String>, Long> where the value is the count of occurrences
                 .toStream()
                 .map((k, v) -> new KeyValue<>("=>" + k.window().startTime() + k.window().endTime()+ " " + k.key(), v)); // Map to new key format
     }
