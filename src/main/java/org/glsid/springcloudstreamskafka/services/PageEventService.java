@@ -1,9 +1,15 @@
 package org.glsid.springcloudstreamskafka.services;
 
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.kstream.Grouped;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.TimeWindows;
 import org.glsid.springcloudstreamskafka.entities.PageEvent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.Date;
 import java.util.Random;
 import java.util.function.Consumer;
@@ -43,4 +49,18 @@ public class PageEventService {
             return pageEvent;
         };
     }
-}
+
+    // Stream Processing
+    @Bean
+    public Function<KStream<String, PageEvent>, KStream<String, Long>> kStreamFunction() {
+        return (input) -> input
+                .filter((k, v) -> v.getDuration() > 500) // Filter events with duration > 500
+                .map((k, v) -> new KeyValue<>(v.getPage(), 0L)) // Map to page as key and 0L as value
+                .groupBy((k, v) -> k, Grouped.with(Serdes.String(), Serdes.Long())) // Group by page
+                .windowedBy(TimeWindows.of(Duration.ofSeconds(5000))) // Windowing by 5000 seconds
+                .count() // returns a KTable<Windowed<String>, Long> where the value is the count of occurrences
+                .toStream()
+                .map((k, v) -> new KeyValue<>("=>" + k.window().startTime() + k.window().endTime()+ " " + k.key(), v)); // Map to new key format
+    }
+
+    }
