@@ -55,10 +55,13 @@ public class PageEventService {
     @Bean
     public Function<KStream<String, PageEvent>, KStream<String, Long>> kStreamFunction() {
         return (input) -> input
-                .filter((k, v) -> v.getDuration() > 500) // Filter events with duration > 500
+                .filter((k, v) -> {
+                    System.out.println("Processing event: " + v);
+                    return (v.getDuration() > 500);
+                }) // Filter events with duration > 500
                 .map((k, v) -> new KeyValue<>(v.getPage(), 0L)) // Map to page as key and 0L as value
                 .groupBy((k, v) -> k, Grouped.with(Serdes.String(), Serdes.Long())) // Group by page
-                .windowedBy(TimeWindows.of(Duration.ofSeconds(5000))) // Windowing by 5000 seconds
+                .windowedBy(TimeWindows.of(Duration.ofSeconds(10))) // Windowing by 5000 seconds
                 .count(Materialized.as("count-store")) // returns a KTable<Windowed<String>, Long> where the value is the count of occurrences
                 .toStream()
                 .map((k, v) -> new KeyValue<>("=>" + k.window().startTime() + k.window().endTime()+ " " + k.key(), v)); // Map to new key format

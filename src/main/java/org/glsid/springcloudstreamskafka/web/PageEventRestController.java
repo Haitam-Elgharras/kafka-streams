@@ -34,21 +34,32 @@ public class PageEventRestController {
         return pageEvent;
     }
 
-    @GetMapping(value = "/analytics",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<Map<String,Long>> analytics(){
+    @GetMapping("/test-store")
+    public String testStore() {
+        ReadOnlyWindowStore<String, Long> store = interactiveQueryService.getQueryableStore("count-store", QueryableStoreTypes.windowStore());
+        return (store != null) ? "Store available" : "Store unavailable";
+    }
+
+    @GetMapping(value = "/analytics", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<Map<String, Long>> analytics() {
         return Flux.interval(Duration.ofSeconds(1))
-                .map(seq->{
-                    Map<String,Long> stringLongMap=new HashMap<>();
+                .map(seq -> {
+                    Map<String, Long> stringLongMap = new HashMap<>();
                     ReadOnlyWindowStore<String, Long> windowStore = interactiveQueryService.getQueryableStore("count-store", QueryableStoreTypes.windowStore());
-                    Instant now=Instant.now();
-                    Instant from=now.minusSeconds(5);
-                    KeyValueIterator<Windowed<String>, Long> keyValueIterator = windowStore.fetchAll(from, now);
-                    while (keyValueIterator.hasNext()){
-                        KeyValue<Windowed<String>, Long> next = keyValueIterator.next();
-                        stringLongMap.put(next.key.key(),next.value);
+                    if (windowStore == null) {
+                        System.err.println("Window store not found!");
+                        return stringLongMap; // Return empty map
+                    }
+                    Instant now = Instant.now();
+                    Instant from = now.minusSeconds(10); // Reduced window
+                    try (KeyValueIterator<Windowed<String>, Long> keyValueIterator = windowStore.fetchAll(from, now)) {
+                        while (keyValueIterator.hasNext()) {
+                            KeyValue<Windowed<String>, Long> next = keyValueIterator.next();
+                            stringLongMap.put(next.key.key(), next.value);
+                        }
                     }
                     return stringLongMap;
-                }).share(); // share() to make sure the Flux is shared between multiple subscribers
+                }).share();
     }
 
     @GetMapping(value = "/analytics/one",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
